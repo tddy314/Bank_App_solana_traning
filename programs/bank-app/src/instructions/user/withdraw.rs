@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, system_program};
 
 use crate::{
-    constant::{BANK_INFO_SEED, USER_RESERVE_SEED},
+    constant::{BANK_INFO_SEED, USER_RESERVE_SEED, BANK_VAULT_SEED},
     error::BankAppError,
     state::{BankInfo, UserReserve},
     transfer_helper::sol_transfer_from_pda,
@@ -15,6 +15,15 @@ pub struct Withdraw<'info> {
         bump
     )]
     pub bank_info: Box<Account<'info, BankInfo>>,
+    
+    /// CHECK: 
+    #[account(
+        mut,
+        seeds = [BANK_VAULT_SEED],
+        bump,
+        owner = system_program::ID
+    )]
+    pub bank_vault: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -34,7 +43,7 @@ impl<'info> Withdraw<'info> {
             return Err(BankAppError::BankAppPaused.into());
         }
 
-        let pda_seeds: &[&[&[u8]]] = &[&[BANK_INFO_SEED, &[ctx.accounts.bank_info.bump]]];
+        let pda_seeds: &[&[&[u8]]] = &[&[BANK_VAULT_SEED, &[ctx.accounts.bank_info.bump]]];
         // Your code here
         let user_reserve = &mut ctx.accounts.user_reserve;
         if user_reserve.deposited_amount < withdraw_amount {
@@ -43,7 +52,7 @@ impl<'info> Withdraw<'info> {
         user_reserve.deposited_amount -= withdraw_amount;
 
         sol_transfer_from_pda(
-            ctx.accounts.bank_info.to_account_info(),
+            ctx.accounts.bank_vault.to_account_info(),
             ctx.accounts.user.to_account_info(),
             &ctx.accounts.system_program,
             pda_seeds,

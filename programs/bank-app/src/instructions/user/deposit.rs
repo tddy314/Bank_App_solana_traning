@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, system_program};
 
 use crate::{
-    constant::{BANK_INFO_SEED, USER_RESERVE_SEED},
+    constant::{BANK_INFO_SEED, USER_RESERVE_SEED, BANK_VAULT_SEED},
     error::BankAppError,
     state::{BankInfo, UserReserve},
     transfer_helper::sol_transfer_from_user,
@@ -15,6 +15,15 @@ pub struct Deposit<'info> {
         bump
     )]
     pub bank_info: Box<Account<'info, BankInfo>>,
+
+    /// CHECK: 
+    #[account(
+        mut,
+        seeds = [BANK_VAULT_SEED],
+        bump,
+        owner = system_program::ID
+    )]
+    pub bank_vault: UncheckedAccount<'info>,
 
     #[account(
         init_if_needed,
@@ -40,7 +49,7 @@ impl<'info> Deposit<'info> {
 
         sol_transfer_from_user(
             &ctx.accounts.user,
-            ctx.accounts.bank_info.to_account_info(),
+            ctx.accounts.bank_vault.to_account_info(),
             &ctx.accounts.system_program,
             deposit_amount,
         )?;
